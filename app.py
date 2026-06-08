@@ -47,12 +47,12 @@ STATES  = ["MH","DL","KA","TN","UP","GJ","RJ","WB","TS","KL",
 
 
 # ── Load model & data ─────────────────────────────────────────────────────────
-@st.cache_resource(show_spinner="Loading fraud detection model...")
+@st.cache_resource(show_spinner="Training model for first time — please wait (~2 min)...")
 def load_model():
     path = "models/fraud_model.pkl"
     if not os.path.exists(path):
-        st.error("Model not found. Run `python train_model.py` first.")
-        st.stop()
+        import train_model
+        train_model.train()
     with open(path, "rb") as f:
         return pickle.load(f)
 
@@ -61,8 +61,8 @@ def load_model():
 def load_data():
     path = "data/transactions.csv"
     if not os.path.exists(path):
-        st.error("Data not found. Run `python train_model.py` first.")
-        st.stop()
+        import train_model
+        train_model.train()
     return pd.read_csv(path)
 
 
