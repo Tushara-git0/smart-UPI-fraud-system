@@ -58,15 +58,34 @@ def engineer(df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
 def prepare_single(row: dict, encoders: dict) -> pd.DataFrame:
     """Encode and engineer features for a single transaction dict."""
     df = pd.DataFrame([row])
+
+    # cross_state must be computed BEFORE encoding (while values are still strings)
+    df["cross_state"] = (df["sender_state"] != df["receiver_state"]).astype(int)
+
     for col in CATEGORICAL_COLS:
         le = encoders[col]
         val = str(row.get(col, le.classes_[0]))
-        if val in le.classes_:
-            df[col] = le.transform([val])
-        else:
-            df[col] = 0
-    df = add_features(df)
-    # fill any missing feature columns with 0
+        df[col] = le.transform([val]) if val in le.classes_ else 0
+
+    df["is_night_txn"]   = ((df["hour"] < 5) | (df["hour"] > 22)).astype(int)
+    df["high_freq_day"]  = (df["txn_per_day"] > 25).astype(int)
+    df["high_freq_week"] = (df["txn_per_week"] > 100).astype(int)
+    df["amount_ratio"]   = df["amount"] / (df["avg_txn_amount"] + 1)
+    df["new_account"]    = (df["account_age_days"] < 30).astype(int)
+    df["multi_pin_fail"] = (df["pin_attempts"] >= 4).astype(int)
+    df["risk_score"]     = (
+        df["vpn_detected"]   * 3 +
+        df["sim_changed"]    * 3 +
+        df["device_changed"] * 2 +
+        df["location_mismatch"] * 2 +
+        df["multi_pin_fail"] * 2 +
+        df["new_account"]    * 2 +
+        (df["amount_ratio"] > 5).astype(int) * 2 +
+        df["is_night_txn"]  +
+        df["high_freq_day"] +
+        df["cross_state"]
+    )
+
     for f in FEATURES:
         if f not in df.columns:
             df[f] = 0

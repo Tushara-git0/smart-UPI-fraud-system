@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timezone
 from fraud_engine import get_fraud_reasons
 
 
@@ -11,7 +11,7 @@ def build_investigation_queue(df: pd.DataFrame, top_n: int = 500) -> pd.DataFram
     fraud_df["reasons"] = fraud_df.apply(
         lambda r: " | ".join(get_fraud_reasons(r.to_dict())), axis=1
     )
-    fraud_df["flagged_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    fraud_df["flagged_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
     return fraud_df.reset_index(drop=True)
 
 

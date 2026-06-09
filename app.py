@@ -5,7 +5,7 @@ import pickle
 import time
 import os
 import random
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fraud_engine import get_fraud_reasons
 from feature_engineering import prepare_single, FEATURES
@@ -416,7 +416,7 @@ elif page == "📡 Real-Time Monitor":
             }
             label, prob, reasons = predict(row)
             entry = {
-                "Time":    datetime.now().strftime("%H:%M:%S"),
+                "Time":    datetime.now(timezone.utc).strftime("%H:%M:%S UTC"),
                 "TXN ID":  row["txn_id"],
                 "Amount":  f"₹{row['amount']:,.0f}",
                 "Bank":    row["sender_bank"],
@@ -427,20 +427,23 @@ elif page == "📡 Real-Time Monitor":
             if len(st.session_state.feed_log) > max_txns:
                 st.session_state.feed_log = st.session_state.feed_log[-max_txns:]
 
+            feed_reversed = list(reversed(st.session_state.feed_log))
             feed_placeholder.dataframe(
-                pd.DataFrame(st.session_state.feed_log[::-1]),
+                pd.DataFrame(feed_reversed),
                 use_container_width=True
             )
             if label == "FRAUD":
+                top_reasons = reasons[:2]
                 alert_placeholder.error(
                     f"🚨 FRAUD ALERT | {row['txn_id']} | ₹{row['amount']:,.0f} | "
-                    f"Prob: {prob*100:.1f}% | {' • '.join(reasons[:2])}"
+                    f"Prob: {prob*100:.1f}% | {' • '.join(top_reasons)}"
                 )
             time.sleep(1 / speed)
     else:
         if st.session_state.feed_log:
+            log_reversed = list(reversed(st.session_state.feed_log))
             feed_placeholder.dataframe(
-                pd.DataFrame(st.session_state.feed_log[::-1]),
+                pd.DataFrame(log_reversed),
                 use_container_width=True
             )
         else:
