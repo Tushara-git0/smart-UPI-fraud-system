@@ -53,13 +53,29 @@ ANALYTICS_COLS = [
     "fraud_score", "txn_per_day", "avg_txn_amount"
 ]
 
+# Dtype map — forces smallest possible types, cuts RAM ~50%
+DTYPES = {
+    "user_id":       "int32",
+    "amount":        "float32",
+    "hour":          "int8",
+    "is_fraud":      "int8",
+    "fraud_score":   "int8",
+    "txn_per_day":   "int8",
+    "avg_txn_amount":"float32",
+    "sender_bank":   "category",
+    "receiver_bank": "category",
+    "sender_state":  "category",
+    "receiver_state":"category",
+    "payment_method":"category",
+}
 
-@st.cache_resource(show_spinner="Training model — please wait...")
+
+@st.cache_resource(show_spinner="Loading fraud detection model...")
 def load_model():
     path = "models/fraud_model.pkl"
     if not os.path.exists(path):
         import train_model
-        train_model.train()          # trains on 100K rows for cloud
+        train_model.train()
     with open(path, "rb") as f:
         return pickle.load(f)
 
@@ -70,10 +86,10 @@ def load_data():
     if not os.path.exists(path):
         import train_model
         train_model.train()
-    # Read only needed columns — avoids loading all 30+ cols into RAM
     all_cols = pd.read_csv(path, nrows=0).columns.tolist()
-    cols = [c for c in ANALYTICS_COLS if c in all_cols]
-    return pd.read_csv(path, usecols=cols)
+    cols     = [c for c in ANALYTICS_COLS if c in all_cols]
+    dtypes   = {k: v for k, v in DTYPES.items() if k in cols}
+    return pd.read_csv(path, usecols=cols, dtype=dtypes, engine="c")
 
 
 bundle   = load_model()
@@ -464,4 +480,4 @@ elif page == "🔔 Alert Settings":
             )
             st.success("Telegram alert sent!") if result else st.error("Failed. Check credentials.")
 
-    st.info("💡 For production, store credentials in a `.env` file and load with `python-dotenv`.")
+
