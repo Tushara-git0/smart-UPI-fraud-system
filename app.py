@@ -46,24 +46,34 @@ STATES  = ["MH","DL","KA","TN","UP","GJ","RJ","WB","TS","KL",
            "MP","AP","PB","HR","BR"]
 
 
-# ── Load model & data ─────────────────────────────────────────────────────────
-@st.cache_resource(show_spinner="Training model for first time — please wait (~2 min)...")
+# Only load columns actually needed for analytics — cuts RAM significantly
+ANALYTICS_COLS = [
+    "user_id", "txn_id", "amount", "hour", "sender_bank", "receiver_bank",
+    "sender_state", "receiver_state", "payment_method", "is_fraud",
+    "fraud_score", "txn_per_day", "avg_txn_amount"
+]
+
+
+@st.cache_resource(show_spinner="Training model — please wait...")
 def load_model():
     path = "models/fraud_model.pkl"
     if not os.path.exists(path):
         import train_model
-        train_model.train()
+        train_model.train()          # trains on 100K rows for cloud
     with open(path, "rb") as f:
         return pickle.load(f)
 
 
-@st.cache_data(show_spinner="Loading transaction data...")
+@st.cache_data(show_spinner="Loading data...", ttl=3600)
 def load_data():
     path = "data/transactions.csv"
     if not os.path.exists(path):
         import train_model
         train_model.train()
-    return pd.read_csv(path)
+    # Read only needed columns — avoids loading all 30+ cols into RAM
+    all_cols = pd.read_csv(path, nrows=0).columns.tolist()
+    cols = [c for c in ANALYTICS_COLS if c in all_cols]
+    return pd.read_csv(path, usecols=cols)
 
 
 bundle   = load_model()

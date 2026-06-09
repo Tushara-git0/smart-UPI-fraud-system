@@ -11,8 +11,13 @@ from fraud_engine import label_fraud
 from feature_engineering import engineer, FEATURES
 
 
-def train(n: int = 1_000_000):
-    print("Generating data...")
+# Use 100K for cloud deployment, 1M for local (pass --full flag)
+CLOUD_N = 100_000
+FULL_N   = 1_000_000
+
+
+def train(n: int = CLOUD_N):
+    print(f"Generating {n:,} transactions...")
     df = generate_transactions(n)
     df = label_fraud(df)
 
@@ -42,7 +47,7 @@ def train(n: int = 1_000_000):
     y_pred = model.predict(X_test)
     y_prob = model.predict_proba(X_test)[:, 1]
 
-    print("\n── Evaluation ──────────────────────────────")
+    print("\n-- Evaluation --")
     cm = confusion_matrix(y_test, y_pred)
     print(f"Accuracy  : {accuracy_score(y_test, y_pred)*100:.2f}%")
     print(f"ROC-AUC   : {roc_auc_score(y_test, y_prob):.4f}")
@@ -70,4 +75,6 @@ def train(n: int = 1_000_000):
 
 
 if __name__ == "__main__":
-    train()
+    import sys
+    n = FULL_N if "--full" in sys.argv else CLOUD_N
+    train(n)
